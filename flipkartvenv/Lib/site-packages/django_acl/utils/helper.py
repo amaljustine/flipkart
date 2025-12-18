@@ -1,0 +1,77 @@
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group as AuthGroup
+from django.core.exceptions import PermissionDenied
+
+
+
+
+class ACLBaseBackend:
+    
+    def get_user_permissions(self, user_obj, obj=None):
+        return set()
+    
+    def get_role_permissions(self, roles):
+        permissions = set()
+        for role in roles:
+            role_permissions = role.permissions.all()
+            for role_permission in role_permissions:
+                codename = f"auth.{role_permission.codename}"
+                permissions.add(codename)
+        return permissions
+    
+
+    def get_group_permissions(self, user_obj, obj=None):
+        user_groups_field = get_user_model()._meta.get_field("user_groups")
+        user_groups_query = "group__%s" % user_groups_field.related_query_name()
+        
+        roles = AuthGroup.objects.filter(**{user_groups_query: user_obj})
+        permissions = self.get_role_permissions(roles)
+        
+        return set(permissions)
+    
+
+    def get_all_permissions(self, user_obj, obj=None):
+        return {
+            *self.get_user_permissions(user_obj, obj=obj),
+            *self.get_group_permissions(user_obj, obj=obj),
+        }
+
+    def has_acl_perm(self, user_obj, perm, obj=None):
+        return perm in self.get_all_permissions(user_obj, obj=obj)
+    
+    
+
+
+def acl_has_perms(user, perm, obj):
+    
+    """
+    A backend can raise `PermissionDenied` to short-circuit permission checking.
+    """
+    try:
+        if ACLBaseBackend().has_acl_perm(user_obj=user, perm=perm, obj=obj) or user.is_superuser:
+            return True
+    except PermissionDenied:
+        return False
+    return False
+
+
+
+
+
+
+def get_object_or_none(classmodel, **kwargs):
+    try:
+        return classmodel.objects.get(**kwargs)
+    except classmodel.DoesNotExist:
+        return None
+
+
+def handle_index_error(key, content):
+    try:
+        return content[key]
+    except IndexError:
+        return ''
+    except:
+        return ''
+
+

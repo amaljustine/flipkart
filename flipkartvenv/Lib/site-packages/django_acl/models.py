@@ -1,0 +1,69 @@
+from django.db import models
+from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group as AuthRole
+from django.utils.translation import gettext_lazy as _
+
+
+class Role(AuthRole):
+    class Meta:
+        proxy = True
+        app_label = 'auth'
+        verbose_name = _('Role')
+        default_permissions  = ()
+        
+        
+        
+class GroupManager(models.Manager):
+    use_in_migrations = True
+
+    def get_by_natural_key(self, name):
+        return self.get(name=name)
+
+
+
+class Group(models.Model):
+    name = models.CharField(_("name"), max_length=150, unique=True)
+    roles = models.ManyToManyField(
+        AuthRole,
+        verbose_name=_("roles"),
+        blank=True,
+    )
+
+    objects = GroupManager()
+
+    class Meta:
+        verbose_name = _("group")
+        verbose_name_plural = _("groups")
+        
+    def get_roles(self):
+        return ",".join([str(p) for p in self.roles.all()])
+
+    def __str__(self):
+        return self.name
+
+    def natural_key(self):
+        return (self.name,)
+
+
+
+
+
+
+if not hasattr(Permission, 'label'):
+    label = models.CharField(db_column='label', max_length=255, blank=True, null=False)
+    label.contribute_to_class(Permission, 'label')
+    sub_label = models.CharField(db_column='sub_label', max_length=255, blank=True, null=False)
+    sub_label.contribute_to_class(Permission, 'sub_label')
+    
+    
+    
+    
+    
+
+
+class AbstractDateFieldMix(models.Model):
+    created_date              = models.DateTimeField(_('created_date'), auto_now_add=True, editable=False, blank=True, null=True)
+    modified_date             = models.DateTimeField(_('modified_date'), auto_now=True, editable=False, blank=True, null=True)
+
+    class Meta:
+        abstract = True

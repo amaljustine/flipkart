@@ -1,0 +1,47 @@
+from django.contrib import admin
+from django.contrib.contenttypes.models import ContentType
+
+from django.contrib.auth.models import Permission
+from django.contrib.auth.admin import GroupAdmin as AuthRoleAdmin
+from django.contrib.auth.models import Group as AuthRole
+
+from .models import Group, Role
+
+
+class PermissionsAdmin(admin.ModelAdmin):
+    model = Permission
+    list_display = ['id', 'name','content_type','codename','label','sub_label']
+
+admin.site.register(Permission,PermissionsAdmin)
+
+
+
+class ContentTypeAdmin(admin.ModelAdmin):
+    model = ContentType
+    list_display = ['id', 'app_label','model',]
+    
+admin.site.register(ContentType,ContentTypeAdmin)
+
+
+
+
+
+
+class RoleAdmin(AuthRoleAdmin):
+    list_display = ['name','get_permissions']
+    
+    def get_permissions(self,obj):
+        return [obj.codename for obj in obj.permissions.all()]
+
+
+admin.site.unregister(AuthRole)
+admin.site.register(Role, RoleAdmin)
+
+
+
+
+@admin.register(Group)
+class GroupAdmin(admin.ModelAdmin):
+    list_display = ('name','get_roles')
+    search_fields = ('name',)
+    
